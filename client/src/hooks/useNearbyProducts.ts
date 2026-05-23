@@ -68,15 +68,13 @@ export const useNearbyProducts = (): UseNearbyProductsReturn => {
         params.append('search', searchQuery);
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/geo/nearby-products?${params}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      const apiRoot = import.meta.env.VITE_API_URL?.trim() || '/api/v1';
+      const endpoint = `${apiRoot}/geo/nearby-products?${params}`;
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        cache: 'no-store'
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch nearby products');

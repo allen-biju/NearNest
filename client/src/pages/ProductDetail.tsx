@@ -12,8 +12,10 @@ import {
   Star, 
   MessageSquare,
   ThumbsUp,
-  Share2
+  Share2,
+  Heart
 } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
 
 interface IReview {
   _id: string;
@@ -64,6 +66,8 @@ export const ProductDetail: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeImage, setActiveImage] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const { isWishlisted, toggle } = useWishlist();
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -149,15 +153,27 @@ export const ProductDetail: React.FC = () => {
         <h2 className="font-bold text-xs uppercase tracking-wider text-textSecondary">
           Homemade Details
         </h2>
-        <button 
-          onClick={() => {
-            navigator.clipboard.writeText(window.location.href);
-            triggerToast('🔗 Product link copied to clipboard!');
-          }}
-          className="p-1.5 bg-white border border-warmborder rounded-full hover:bg-surface text-textPrimary"
-        >
-          <Share2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (product) toggle({ productId: product._id, title: product.title, image: product.images[0], price: product.discountedPrice || product.price });
+            }}
+            className="p-1.5 bg-white border border-warmborder rounded-full hover:bg-surface text-textPrimary"
+            aria-label="Toggle wishlist"
+          >
+            <Heart className={`w-4 h-4 ${product && isWishlisted(product._id) ? 'fill-primary text-primary' : ''}`} />
+          </button>
+
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              triggerToast('🔗 Product link copied to clipboard!');
+            }}
+            className="p-1.5 bg-white border border-warmborder rounded-full hover:bg-surface text-textPrimary"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 mt-3 space-y-5">

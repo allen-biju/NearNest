@@ -131,21 +131,28 @@ export const Checkout: React.FC = () => {
       });
       if (success) {
         setIsRegistering(false);
+        setAuthName('');
+        setAuthPhone('');
+        setAuthEmail('');
+        setAuthPassword('');
+        navigate('/');
       }
     } else {
       if (!authEmail) {
         alert('Please enter your email address');
         return;
       }
-      await login(authEmail, authPassword);
+      const success = await login(authEmail, authPassword);
+      if (success) {
+        setAuthEmail('');
+        setAuthPassword('');
+        navigate('/');
+      }
     }
   };
 
-  // Submit Order Creation
   const handlePlaceOrderSubmit = async () => {
-    setPlacingOrder(true);
     try {
-      // Build delivery address object matching server requirements
       let deliveryAddressObj = {
         addressLine: coords.label,
         city: 'Kozhikode',
@@ -153,7 +160,7 @@ export const Checkout: React.FC = () => {
         pincode: '673001',
         location: {
           type: 'Point',
-          coordinates: [coords.lng, coords.lat] // [lng, lat]
+          coordinates: [coords.lng, coords.lat]
         }
       };
 

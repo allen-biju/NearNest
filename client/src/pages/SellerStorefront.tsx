@@ -4,8 +4,9 @@ import { useCart } from '../context/CartContext';
 import { useTranslation } from '../context/TranslationContext';
 import { useGeolocator } from '../hooks/useGeolocator';
 import {
-  ArrowLeft, MapPin, Star, Clock, Truck, ShoppingBag, Share2, Sparkles
+  ArrowLeft, MapPin, Star, Clock, Truck, ShoppingBag, Share2, Sparkles, Heart
 } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
 
 interface IProduct {
   _id: string;
@@ -275,12 +276,21 @@ export const SellerStorefront: React.FC = () => {
                 const hasDiscount = product.discountedPrice && product.discountedPrice < product.price;
                 const finalPrice = hasDiscount ? product.discountedPrice! : product.price;
                 const inStock = product.isUnlimitedStock || product.stock > 0;
+                const { isWishlisted, toggle } = useWishlist();
+                const wish = isWishlisted(product._id);
 
                 return (
                   <div key={product._id} className="bg-white border border-warmborder rounded-2xl p-3 flex gap-3 shadow-sm hover:border-accent transition-all group">
                     {/* Image */}
                     <Link to={`/product/${product._id}`} className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-background relative">
                       <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <button
+                        onClick={(e) => { e.preventDefault(); toggle({ productId: product._id, title: product.title, image: product.images[0], price: finalPrice }); }}
+                        className="absolute top-2 right-2 p-1 rounded-full bg-white/90 hover:bg-white shadow-sm"
+                        aria-label="Toggle wishlist"
+                      >
+                        <Heart className={`w-4 h-4 ${wish ? 'fill-primary text-primary' : 'text-textSecondary'}`} />
+                      </button>
                       {!inStock && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                           <span className="text-[9px] text-white font-black uppercase bg-black/60 px-1.5 py-0.5 rounded">Sold Out</span>

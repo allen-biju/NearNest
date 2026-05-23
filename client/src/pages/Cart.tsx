@@ -28,7 +28,7 @@ export const Cart: React.FC = () => {
 
   if (cart.length === 0) {
     return (
-      <div className="pb-24">
+      <div className="pb-40">
         {/* HEADER BAR */}
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md px-4 py-3 border-b border-warmborder flex items-center justify-between">
           <button 
@@ -63,7 +63,7 @@ export const Cart: React.FC = () => {
   }
 
   return (
-    <div className="pb-32">
+    <div className="pb-40">
       {/* HEADER BAR */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md px-4 py-3 border-b border-warmborder flex items-center justify-between">
         <button 

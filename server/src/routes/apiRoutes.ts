@@ -4,6 +4,7 @@ import { globalLimiter, authLimiter, apiLimiter } from '../middleware/rateLimite
 import { handleValidationErrors } from '../middleware/errorHandler';
 import * as authController from '../controllers/authController';
 import * as geoController from '../controllers/geoController';
+import * as orderController from '../controllers/orderController';
 
 const router = Router();
 
@@ -44,11 +45,11 @@ router.get('/search', geoController.searchProducts);
 // router.get('/sellers/:slug', sellerController.getSellerStorefront);
 
 // ============================================================
-// ORDER ROUTES (To be implemented)
+// ORDER ROUTES
 // ============================================================
-// router.post('/orders', requireAuth, orderController.placeOrder);
-// router.get('/orders', requireAuth, orderController.getBuyerOrders);
-// router.put('/orders/:id/status', requireAuth, requireSeller, orderController.updateOrderStatus);
+router.post('/orders', requireAuth, orderController.placeOrder);
+router.get('/orders', requireAuth, orderController.getBuyerOrders);
+router.put('/orders/:id/status', requireAuth, requireSeller, orderController.updateOrderStatus);
 
 // ============================================================
 // ADMIN ROUTES (To be implemented)

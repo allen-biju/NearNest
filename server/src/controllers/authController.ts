@@ -16,14 +16,16 @@ export const register = async (req: Request, res: Response) => {
       return res.status(422).json({ success: false, errors: errors.array() });
     }
 
-    const { name, email, phone, password, referralCode } = req.body;
+    const { name, email, phone, password, referralCode, role, sellerData } = req.body;
 
     const user = await AuthService.register({
       name,
       email,
       phone,
       password,
-      referralCode
+      referralCode,
+      role,
+      sellerData
     });
 
     return sendSuccess(res, user, 'User registered successfully', 201);

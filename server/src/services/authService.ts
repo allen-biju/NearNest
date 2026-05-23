@@ -14,6 +14,8 @@ export class AuthService {
     phone?: string;
     password: string;
     referralCode?: string;
+    role?: string[];
+    sellerData?: any;
   }) {
     try {
       // Validate input
@@ -39,18 +41,58 @@ export class AuthService {
       const referralCode = generateReferralCode(userData.email || userData.phone || '');
 
       // Create user
+      const assignedRole = userData.role && Array.isArray(userData.role) && userData.role.length > 0 ? userData.role : ['buyer'];
       const user = new User({
         name: userData.name,
         email: userData.email,
         phone: userData.phone,
         passwordHash,
         referralCode,
-        role: ['buyer'],
+        role: assignedRole,
         isEmailVerified: false,
         isPhoneVerified: false
       });
 
       await user.save();
+
+      // If registering as seller, create a Seller document stub
+      if (assignedRole.includes('seller')) {
+        try {
+          const { Seller } = require('../models/Schemas');
+          const { businessName, category, address, location, bankDetails, logo, banner } = userData.sellerData || {};
+          const { generateSlug } = require('../utils/generators');
+
+          const seller = new Seller({
+            userId: user._id,
+            businessName: businessName || `${user.name}'s Kitchen`,
+            slug: generateSlug(businessName || user.name, user._id.toString()),
+            description: (userData.sellerData && userData.sellerData.description) || '',
+            category: category || 'other',
+            subCategories: (userData.sellerData && userData.sellerData.subCategories) || [],
+            logo: logo || '',
+            banner: banner || '',
+            location: location || { type: 'Point', coordinates: [0, 0] },
+            address: address || { addressLine: 'Not provided', city: 'Unknown', state: 'Unknown', pincode: '000000' },
+            deliveryRadiusKm: (userData.sellerData && userData.sellerData.deliveryRadiusKm) || 5,
+            deliveryOptions: (userData.sellerData && userData.sellerData.deliveryOptions) || ['pickup'],
+            baseDeliveryFee: (userData.sellerData && userData.sellerData.baseDeliveryFee) || 20,
+            perKmRate: (userData.sellerData && userData.sellerData.perKmRate) || 5,
+            maxDeliveryFee: (userData.sellerData && userData.sellerData.maxDeliveryFee) || 80,
+            freeDeliveryAbove: (userData.sellerData && userData.sellerData.freeDeliveryAbove) || undefined,
+            deliverySlots: (userData.sellerData && userData.sellerData.deliverySlots) || [],
+            operatingHours: (userData.sellerData && userData.sellerData.operatingHours) || [],
+            isOpen: true,
+            isApproved: false,
+            approvalStatus: 'pending',
+            documents: (userData.sellerData && userData.sellerData.documents) || {},
+            bankDetails: bankDetails || { accountHolder: user.name, accountNumber: '0000000', ifscCode: 'NA', bankName: 'NA' }
+          });
+
+          await seller.save();
+        } catch (err) {
+          logger.error('Failed to create seller profile during registration:', err);
+        }
+      }
 
       // Handle referral
       if (userData.referralCode) {

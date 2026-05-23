@@ -84,15 +84,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (loginId: string, password: string): Promise<boolean> => {
     try {
+      const payload: { email?: string; phone?: string; password: string } = { password };
+      if (loginId.includes('@')) {
+        payload.email = loginId.trim();
+      } else {
+        payload.phone = loginId.trim();
+      }
+
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loginId, password })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('nn_token', data.data.token);
-        setToken(data.data.token);
+        const accessToken = data.data.accessToken || data.data.token;
+        localStorage.setItem('nn_token', accessToken);
+        setToken(accessToken);
         setUser(data.data.user);
         return true;
       } else {
@@ -114,10 +122,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('nn_token', data.data.token);
-        setToken(data.data.token);
-        setUser(data.data.user);
-        return true;
+        // Backend register returns only user object, so log in immediately.
+        return await login(userData.email || userData.phone, userData.password);
       } else {
         alert(data.error?.message || 'Signup failed');
         return false;
