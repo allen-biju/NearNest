@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { Order, Product, Seller, User } from '../models/Schemas';
-import { IAuthRequest } from '../middleware/auth';
+import { AuthRequest, IAuthRequest } from '../middleware/auth';
 
 // Simple helper to calculate distance in km on earth between two coordinates
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

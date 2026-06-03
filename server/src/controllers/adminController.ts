@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { Seller, User, Order, Product } from '../models/Schemas';
-import { IAuthRequest } from '../middleware/auth';
+import { AuthRequest, IAuthRequest } from '../middleware/auth';
 
 export const getAdminDashboard = async (req: IAuthRequest, res: Response) => {
   try {

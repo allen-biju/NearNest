@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { Seller, Product, Order, User } from '../models/Schemas';
-import { IAuthRequest } from '../middleware/auth';
+import { AuthRequest, IAuthRequest } from '../middleware/auth';
 import { RecommendationService } from '../services/recommendationService';
 
 // Default Hub: Kozhikode
@@ -14,15 +14,52 @@ export const applyAsSeller = async (req: IAuthRequest, res: Response) => {
       bankAccountHolder, bankAccountNumber, bankIfscCode, bankName, gstNumber
     } = req.body;
 
-    if (!businessName || !category || !address || !lat || !lng || !bankAccountNumber || !bankIfscCode) {
-      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Incomplete seller onboarding details' } });
+    // Validate all required fields
+    if (!businessName || !category || !address || lat === undefined || lat === null || lng === undefined || lng === null) {
+      return res.status(400).json({ 
+        success: false, 
+        error: { 
+          code: 'BAD_REQUEST', 
+          message: 'Business name, category, address, and location (latitude/longitude) are required' 
+        } 
+      });
     }
 
-    if (!req.user) return res.status(401);
+    if (!bankAccountNumber || !bankIfscCode) {
+      return res.status(400).json({ 
+        success: false, 
+        error: { 
+          code: 'BAD_REQUEST', 
+          message: 'Bank account number and IFSC code are required' 
+        } 
+      });
+    }
+
+    // Validate location coordinates
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    
+    if (isNaN(latitude) || isNaN(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return res.status(400).json({ 
+        success: false, 
+        error: { 
+          code: 'INVALID_LOCATION', 
+          message: 'Invalid latitude or longitude values' 
+        } 
+      });
+    }
+
+    if (!req.user) return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
 
     const existingSeller = await Seller.findOne({ userId: req.user._id });
     if (existingSeller) {
-      return res.status(400).json({ success: false, error: { code: 'DUPLICATE', message: 'You have already applied or registered as a seller' } });
+      return res.status(400).json({ 
+        success: false, 
+        error: { 
+          code: 'DUPLICATE', 
+          message: 'You have already applied or registered as a seller' 
+        } 
+      });
     }
 
     const slug = `${businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
@@ -36,7 +73,7 @@ export const applyAsSeller = async (req: IAuthRequest, res: Response) => {
       subCategories: [],
       location: {
         type: 'Point',
-        coordinates: [Number(lng), Number(lat)] as [number, number]
+        coordinates: [longitude, latitude] as [number, number]
       },
       address,
       deliveryRadiusKm: 5,
@@ -85,13 +122,85 @@ export const applyAsSeller = async (req: IAuthRequest, res: Response) => {
 
     await seller.save();
 
-    // Automatically make user a seller (for developer testing convenience, or wait for admin approval)
-    // In production we wait, but we can also let admins approve them via `/admin` panel!
-    
     res.status(201).json({
       success: true,
       data: seller,
-      message: 'Your seller application has been submitted successfully and is pending admin approval!'
+      message: 'Your seller application has been submitted successfully with your location and is pending admin approval!'
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
+  }
+};
+
+export const getSellerSettings = async (req: IAuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+    }
+
+    const seller = await Seller.findOne({ userId: req.user._id });
+    if (!seller) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Seller profile not found' } });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: seller
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
+  }
+};
+
+export const getSellerMetrics = async (req: IAuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+    }
+
+    const seller = await Seller.findOne({ userId: req.user._id });
+    if (!seller) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Seller profile not found' } });
+    }
+
+    const orders = await Order.find({ sellerId: seller._id });
+    const products = await Product.find({ sellerId: seller._id });
+
+    const totalSales = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+    const totalCustomers = new Set(orders.map((order) => order.buyerId.toString())).size;
+    const averageRating = seller.rating?.average || 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalSales,
+        totalCustomers,
+        averageRating,
+        ordersCount: orders.length,
+        productsCount: products.length
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
+  }
+};
+
+export const getSellerProducts = async (req: IAuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+    }
+
+    const seller = await Seller.findOne({ userId: req.user._id });
+    if (!seller) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Seller profile not found' } });
+    }
+
+    const products = await Product.find({ sellerId: seller._id });
+
+    res.status(200).json({
+      success: true,
+      data: products
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
@@ -132,6 +241,54 @@ export const getSellerStorefront = async (req: IAuthRequest, res: Response) => {
         seller,
         products
       }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
+  }
+};
+
+export const updateSellerLocation = async (req: IAuthRequest, res: Response) => {
+  try {
+    const { lat, lng, address } = req.body;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ 
+        success: false, 
+        error: { code: 'BAD_REQUEST', message: 'Latitude and longitude are required' } 
+      });
+    }
+
+    const seller = await Seller.findOne({ userId: req.user?._id });
+    if (!seller) {
+      return res.status(404).json({ 
+        success: false, 
+        error: { code: 'NOT_FOUND', message: 'Seller profile not found' } 
+      });
+    }
+
+    // Update seller location
+    seller.location = {
+      type: 'Point',
+      coordinates: [Number(lng), Number(lat)] as [number, number]
+    };
+
+    // Update address if provided
+    if (address) {
+      seller.address = {
+        ...seller.address,
+        ...address
+      };
+    }
+
+    await seller.save();
+
+    // Sync all product coordinates to enable accurate geospatial searches
+    await Product.updateMany({ sellerId: seller._id }, { location: seller.location });
+
+    res.status(200).json({
+      success: true,
+      data: seller,
+      message: 'Store location updated successfully and synced with all products!'
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });

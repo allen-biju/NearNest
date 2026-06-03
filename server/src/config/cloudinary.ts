@@ -10,7 +10,7 @@ cloudinary.config({
 });
 
 export const uploadToCloudinary = async (
-  file: Express.Multer.File | string,
+  file: { mimetype: string; buffer: Buffer } | string,
   folder: string = 'nearnest'
 ): Promise<{ url: string; publicId: string }> => {
   try {

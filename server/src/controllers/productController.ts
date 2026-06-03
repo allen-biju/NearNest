@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { Product, Seller } from '../models/Schemas';
-import { IAuthRequest } from '../middleware/auth';
+import { AuthRequest, IAuthRequest } from '../middleware/auth';
 import { RecommendationService } from '../services/recommendationService';
+import { uploadToCloudinary } from '../config/cloudinary';
 
 // Default Hub: Kozhikode, Kerala
 const DEFAULT_LAT = 11.2588;
@@ -26,6 +27,23 @@ export const createProduct = async (req: IAuthRequest, res: Response) => {
 
     const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
 
+    const resolvedImages: string[] = [];
+    if (Array.isArray(images) && images.length) {
+      for (const image of images) {
+        if (typeof image === 'string' && image.startsWith('data:')) {
+          try {
+            const upload = await uploadToCloudinary(image, 'nearnest/products');
+            resolvedImages.push(upload.url);
+          } catch (uploadError) {
+            console.warn('Cloudinary upload failed, using raw image data as fallback');
+            resolvedImages.push(image);
+          }
+        } else if (typeof image === 'string') {
+          resolvedImages.push(image);
+        }
+      }
+    }
+
     const product = new Product({
       sellerId: seller._id,
       title,
@@ -33,7 +51,7 @@ export const createProduct = async (req: IAuthRequest, res: Response) => {
       description,
       ingredients,
       allergens: allergens || [],
-      images: images && images.length ? images : ['https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600'],
+      images: resolvedImages.length ? resolvedImages : ['https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600'],
       category,
       subCategory,
       tags: tags || [],

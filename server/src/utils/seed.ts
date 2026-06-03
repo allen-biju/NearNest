@@ -35,6 +35,7 @@ const seedDB = async () => {
 
     // Hashing standard password
     const passwordHash = await bcrypt.hash('password123', 10);
+    const adminPasswordHash = await bcrypt.hash('admin123', 10);
 
     // ----------------------------------------------------
     // 1. CREATE USERS
@@ -88,7 +89,7 @@ const seedDB = async () => {
       name: 'SuperAdmin NearNest',
       email: 'admin@nearnest.in',
       phone: '7654321098',
-      passwordHash,
+      passwordHash: adminPasswordHash,
       role: ['buyer', 'admin', 'superadmin'],
       isEmailVerified: true,
       isPhoneVerified: true,

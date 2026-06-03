@@ -29,7 +29,7 @@ interface AuthContextType {
   user: IUser | null;
   token: string | null;
   loading: boolean;
-  login: (loginId: string, password: string) => Promise<boolean>;
+  login: (loginId: string, password: string) => Promise<{ success: boolean; user?: IUser }>;
   signup: (userData: any) => Promise<boolean>;
   logout: () => void;
   addAddress: (addressData: any) => Promise<boolean>;
@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = async (loginId: string, password: string): Promise<boolean> => {
+  const login = async (loginId: string, password: string): Promise<{ success: boolean; user?: IUser }> => {
     try {
       const payload: { email?: string; phone?: string; password: string } = { password };
       if (loginId.includes('@')) {
@@ -102,14 +102,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('nn_token', accessToken);
         setToken(accessToken);
         setUser(data.data.user);
-        return true;
+        return { success: true, user: data.data.user };
       } else {
         alert(data.error?.message || 'Login failed');
-        return false;
+        return { success: false };
       }
     } catch (err) {
       console.error('Login error:', err);
-      return false;
+      return { success: false };
     }
   };
 
@@ -123,7 +123,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await res.json();
       if (data.success) {
         // Backend register returns only user object, so log in immediately.
-        return await login(userData.email || userData.phone, userData.password);
+        const loginResult = await login(userData.email || userData.phone, userData.password);
+        return loginResult.success;
       } else {
         alert(data.error?.message || 'Signup failed');
         return false;

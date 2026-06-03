@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { Secret } from 'jsonwebtoken';
 import { User } from '../models/Schemas';
 import { getEnv } from '../config/env';
 import { sendError } from '../utils/response';
@@ -9,13 +9,11 @@ import logger from '../config/logger';
 const env = getEnv();
 
 export interface AuthRequest extends Request {
-  user?: {
-    _id: string;
-    email: string;
-    role: string[];
-  };
+  user?: any;
   token?: string;
 }
+
+export type IAuthRequest = AuthRequest;
 
 /**
  * Verify JWT token
@@ -64,7 +62,7 @@ export const requireSeller = (req: AuthRequest, res: Response, next: NextFunctio
  */
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   const adminRoles = ['admin', 'superadmin', 'moderator'];
-  if (!req.user?.role.some((r) => adminRoles.includes(r))) {
+  if (!req.user?.role.some((r: string) => adminRoles.includes(r))) {
     return sendError(res, 'FORBIDDEN', 'Admin access required', 403);
   }
   next();
@@ -86,13 +84,16 @@ export const requireSuperAdmin = (req: AuthRequest, res: Response, next: NextFun
 export const generateTokens = (userId: string, email: string, roles: string[]) => {
   const payload = { _id: userId, email, role: roles };
 
-  const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRY
-  });
+  const accessSecret = env.JWT_ACCESS_SECRET as unknown as jwt.Secret;
+  const refreshSecret = env.JWT_REFRESH_SECRET as unknown as jwt.Secret;
 
-  const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRY
-  });
+  const accessToken = jwt.sign(payload, accessSecret, {
+    expiresIn: env.JWT_ACCESS_EXPIRY as string
+  } as jwt.SignOptions);
+
+  const refreshToken = jwt.sign(payload, refreshSecret, {
+    expiresIn: env.JWT_REFRESH_EXPIRY as string
+  } as jwt.SignOptions);
 
   return { accessToken, refreshToken };
 };

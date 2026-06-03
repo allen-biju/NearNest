@@ -4,7 +4,10 @@ import { globalLimiter, authLimiter, apiLimiter } from '../middleware/rateLimite
 import { handleValidationErrors } from '../middleware/errorHandler';
 import * as authController from '../controllers/authController';
 import * as geoController from '../controllers/geoController';
+import * as productController from '../controllers/productController';
+import * as sellerController from '../controllers/sellerController';
 import * as orderController from '../controllers/orderController';
+import * as adminController from '../controllers/adminController';
 
 const router = Router();
 
@@ -34,26 +37,38 @@ router.get('/geo/recommendations', requireAuth, geoController.getRecommendations
 // ============================================================
 // PRODUCT ROUTES
 // ============================================================
+router.post('/products', requireAuth, requireSeller, productController.createProduct);
 router.get('/products/:id', geoController.getProduct);
 router.get('/products/category/:slug', geoController.getProductsByCategory);
 router.get('/search', geoController.searchProducts);
 
 // ============================================================
-// SELLER ROUTES (To be implemented)
+// SELLER ROUTES
 // ============================================================
-// router.post('/sellers/apply', requireAuth, sellerController.applySeller);
-// router.get('/sellers/:slug', sellerController.getSellerStorefront);
+router.get('/sellers/settings', requireAuth, sellerController.getSellerSettings);
+router.put('/sellers/settings', requireAuth, requireSeller, sellerController.updateStoreSettings);
+router.put('/sellers/location', requireAuth, requireSeller, sellerController.updateSellerLocation);
+router.get('/sellers/metrics', requireAuth, sellerController.getSellerMetrics);
+router.get('/sellers/analytics', requireAuth, requireSeller, sellerController.getSellerAnalytics);
+router.get('/sellers/products', requireAuth, requireSeller, sellerController.getSellerProducts);
+router.post('/sellers/apply', requireAuth, sellerController.applyAsSeller);
+router.get('/sellers/:slug', sellerController.getSellerStorefront);
 
 // ============================================================
 // ORDER ROUTES
 // ============================================================
 router.post('/orders', requireAuth, orderController.placeOrder);
+router.get('/orders/seller', requireAuth, requireSeller, orderController.getSellerOrders);
 router.get('/orders', requireAuth, orderController.getBuyerOrders);
 router.put('/orders/:id/status', requireAuth, requireSeller, orderController.updateOrderStatus);
 
 // ============================================================
-// ADMIN ROUTES (To be implemented)
+// ADMIN ROUTES
 // ============================================================
-// router.get('/admin/dashboard', requireAuth, requireAdmin, adminController.getDashboard);
+router.get('/admin/metrics', requireAuth, requireAdmin, adminController.getAdminDashboard);
+router.get('/admin/sellers/pending', requireAuth, requireAdmin, adminController.getPendingSellers);
+router.put('/admin/sellers/:id', requireAuth, requireAdmin, adminController.approveOrRejectSeller);
+router.get('/admin/users', requireAuth, requireAdmin, adminController.listAllUsers);
+router.get('/admin/orders', requireAuth, requireAdmin, adminController.listAllOrders);
 
 export default router;

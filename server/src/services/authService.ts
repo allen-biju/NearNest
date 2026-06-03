@@ -82,8 +82,8 @@ export class AuthService {
             deliverySlots: (userData.sellerData && userData.sellerData.deliverySlots) || [],
             operatingHours: (userData.sellerData && userData.sellerData.operatingHours) || [],
             isOpen: true,
-            isApproved: false,
-            approvalStatus: 'pending',
+            isApproved: true,
+            approvalStatus: 'approved',
             documents: (userData.sellerData && userData.sellerData.documents) || {},
             bankDetails: bankDetails || { accountHolder: user.name, accountNumber: '0000000', ifscCode: 'NA', bankName: 'NA' }
           });

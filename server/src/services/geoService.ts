@@ -9,6 +9,7 @@ import logger from '../config/logger';
 export class GeoService {
   /**
    * Find nearby products within a radius from user's location
+   * Can optionally show all products with distance calculation instead of just nearby ones
    */
   static async getNearbyProducts(
     userLat: number,
@@ -23,18 +24,20 @@ export class GeoService {
       sortBy?: 'distance' | 'rating' | 'price' | 'new';
       skip?: number;
       limit?: number;
+      filterByLocation?: boolean; // true = only nearby, false = all with distance calculation
     }
   ) {
     try {
       const radiusInMeters = radiusKm * 1000;
       const skip = filters?.skip || 0;
       const limit = Math.min(filters?.limit || 20, 100);
+      const filterByLocation = filters?.filterByLocation !== false; // Default to true (only nearby)
 
       // Try to get from cache first (if Redis is available)
       const cacheKey = generateGeoCacheKey(userLat, userLng, radiusKm, filters?.category, 'products');
       const redis = getRedis();
       
-      if (redis) {
+      if (redis && filterByLocation) {
         try {
           const cachedResult = await redis.get(cacheKey);
           if (cachedResult && !filters?.searchQuery) {
@@ -50,8 +53,11 @@ export class GeoService {
       }
 
       // Build aggregation pipeline
-      const pipeline: any[] = [
-        {
+      const pipeline: any[] = [];
+
+      if (filterByLocation) {
+        // Only nearby products within radius
+        pipeline.push({
           $geoNear: {
             near: {
               type: 'Point',
@@ -65,8 +71,24 @@ export class GeoService {
               stock: { $gt: 0 }
             }
           }
-        }
-      ];
+        });
+      } else {
+        // All products with distance calculation
+        pipeline.push({
+          $geoNear: {
+            near: {
+              type: 'Point',
+              coordinates: [userLng, userLat]
+            },
+            distanceField: 'distanceFromUser',
+            spherical: true,
+            query: {
+              isActive: true,
+              stock: { $gt: 0 }
+            }
+          }
+        });
+      }
 
       // Add category filter if specified
       if (filters?.category) {
@@ -113,20 +135,20 @@ export class GeoService {
         $match: { 'seller.isApproved': true, 'seller.isOpen': true }
       });
 
-      // Sort
+      // Sort - when showing all products, always sort by distance first
       let sortStage: any = {};
       if (filters?.searchQuery) {
         sortStage = { textScore: { $meta: 'textScore' }, distanceFromUser: 1 };
       } else {
         switch (filters?.sortBy) {
           case 'rating':
-            sortStage = { 'rating.average': -1, distanceFromUser: 1 };
+            sortStage = !filterByLocation ? { distanceFromUser: 1, 'rating.average': -1 } : { 'rating.average': -1, distanceFromUser: 1 };
             break;
           case 'price':
-            sortStage = { price: 1 };
+            sortStage = !filterByLocation ? { distanceFromUser: 1, price: 1 } : { price: 1 };
             break;
           case 'new':
-            sortStage = { createdAt: -1 };
+            sortStage = !filterByLocation ? { distanceFromUser: 1, createdAt: -1 } : { createdAt: -1 };
             break;
           default:
             sortStage = { distanceFromUser: 1 };
@@ -161,8 +183,8 @@ export class GeoService {
         }))
       };
 
-      // Cache result (5 minutes) if Redis available
-      if (!filters?.searchQuery && redis) {
+      // Cache result (5 minutes) if Redis available and filterByLocation is true
+      if (!filters?.searchQuery && redis && filterByLocation) {
         try {
           await redis.setex(cacheKey, 300, JSON.stringify(result));
         } catch (cacheErr) {

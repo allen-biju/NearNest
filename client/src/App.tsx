@@ -14,7 +14,9 @@ import { Checkout } from './pages/Checkout';
 import { Orders } from './pages/Orders';
 import { BuyerDashboard } from './pages/BuyerDashboard';
 import { SellerDashboard } from './pages/SellerDashboard';
+import { SellerSettings } from './pages/SellerSettings';
 import { AdminDashboard } from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
 
 // Icons
 import { 
@@ -178,6 +180,8 @@ export const AppContent: React.FC = () => {
         <Route path="/dashboard" element={<DashboardRouter />} />
         <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
         <Route path="/seller-dashboard" element={<SellerDashboard />} />
+        <Route path="/seller-settings" element={<SellerSettings />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         {/* Fallback */}
         <Route path="*" element={<Home />} />

@@ -5,18 +5,17 @@ import { MapPin, Search, Filter, Loader, AlertCircle, LogIn, UserPlus } from 'lu
 import LocationPicker from '../components/discovery/LocationPicker';
 import RadiusSlider from '../components/discovery/RadiusSlider';
 import ProductCard from '../components/discovery/ProductCard';
-import { useGeolocator } from '../hooks/useGeolocator';
-import { useNearbyProducts } from '../hooks/useNearbyProducts';
+import { useGeolocator, SEEDED_HUBS } from '../hooks/useGeolocator';
+import { useNearbyProducts, NearbyProduct } from '../hooks/useNearbyProducts';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
-import type { Product } from '../types/api';
 
 export default function Home() {
-  const { coords, radiusKm, setRadiusKm } = useGeolocator();
+  const { coords, radiusKm, setRadiusKm, loading, acquireDeviceGPS, selectManualLocation } = useGeolocator();
   const { products, isLoading, error, hasNextPage, fetchNearbyProducts } =
     useNearbyProducts();
   const { addToCart } = useCart();
-  const { user, activeRole, setActiveRole, login, signup } = useAuth();
+  const { user, activeRole, setActiveRole, login, signup, logout } = useAuth();
   const { isWishlisted, toggle } = useWishlist();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,17 +28,19 @@ export default function Home() {
   const [authName, setAuthName] = useState('');
   const [authPhone, setAuthPhone] = useState('');
   const [authRole, setAuthRole] = useState<'buyer' | 'seller'>('buyer');
+  const [loginAsRole, setLoginAsRole] = useState<'buyer' | 'seller'>('buyer');
 
   // Seller-specific fields
   const [sellerBusinessName, setSellerBusinessName] = useState('');
   const [sellerCategory, setSellerCategory] = useState('food');
   const [sellerAddressLine, setSellerAddressLine] = useState('');
   const [sellerCity, setSellerCity] = useState('');
-  const [sellerState, setSellerState] = useState('');
   const [sellerPincode, setSellerPincode] = useState('');
   const [sellerBankAccount, setSellerBankAccount] = useState('');
   const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(false);
+  const [filterByLocation, setFilterByLocation] = useState(true); // Toggle for location filtering
+  const currentLocation = coords ? { lat: (coords as any).lat, lng: (coords as any).lng } : undefined;
 
   const handleHomeAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,11 +71,11 @@ export default function Home() {
           address: {
             addressLine: sellerAddressLine || `${sellerBusinessName}`,
             city: sellerCity,
-            state: sellerState || 'Unknown',
-            pincode: sellerPincode
+            state: 'Unknown',
+            pincode: sellerPincode,
           },
           location: coords ? { type: 'Point', coordinates: [coords.lng, coords.lat] } : { type: 'Point', coordinates: [0, 0] },
-          bankDetails: { accountHolder: authName, accountNumber: sellerBankAccount || '0000000', ifscCode: 'NA', bankName: 'NA' }
+          bankDetails: { accountHolder: authName, accountNumber: sellerBankAccount || '0000000', ifscCode: 'NA', bankName: 'NA' },
         };
       }
 
@@ -101,11 +102,34 @@ export default function Home() {
         alert('Please enter your email or mobile number.');
         return;
       }
-      const success = await login(authIdentifier, authPassword);
-      if (success) {
+      const loginResult = await login(authIdentifier, authPassword);
+      if (loginResult.success) {
         setAuthIdentifier('');
         setAuthPassword('');
-        navigate('/');
+
+        const isAdmin = loginResult.user?.role.includes('admin') || loginResult.user?.role.includes('superadmin');
+        const isSeller = loginResult.user?.role.includes('seller');
+
+        if (isAdmin) {
+          logout();
+          alert('Admin users must use the separate admin login page.');
+          return;
+        }
+
+        if (loginAsRole === 'seller') {
+          if (isSeller) {
+            setActiveRole('seller');
+            navigate('/seller-dashboard');
+          } else {
+            alert('This account is not registered as a seller.');
+            setActiveRole('buyer');
+            navigate('/');
+          }
+        } else {
+          setActiveRole('buyer');
+          navigate('/');
+        }
+
         if (coords) {
           await fetchNearbyProducts({
             lat: coords.lat,
@@ -114,6 +138,7 @@ export default function Home() {
             category: selectedCategory === 'all' ? undefined : selectedCategory,
             searchQuery: searchQuery || undefined,
             sortBy,
+            filterByLocation,
           });
         }
       }
@@ -139,54 +164,59 @@ export default function Home() {
         category: selectedCategory === 'all' ? undefined : selectedCategory,
         searchQuery: searchQuery || undefined,
         sortBy,
+        filterByLocation,
       };
       fetchNearbyProducts(filters);
     }
-  }, [coords, radiusKm, selectedCategory, sortBy, user]);
+  }, [coords, radiusKm, selectedCategory, sortBy, user, filterByLocation]);
 
   // Debounced search
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout>();
+  const [searchTimeout, setSearchTimeout] = useState<number | null>(null);
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (searchTimeout) clearTimeout(searchTimeout);
+    if (searchTimeout) window.clearTimeout(searchTimeout);
     setSearchTimeout(
-      setTimeout(() => {
+      window.setTimeout(() => {
         if (coords) {
           fetchNearbyProducts({
             lat: coords.lat,
             lng: coords.lng,
             radius: radiusKm,
             searchQuery: query || undefined,
+            filterByLocation,
           });
         }
       }, 500)
     );
   };
 
-  const handleAddToCart = (product: Product) => {
-    addToCart({
-      productId: product._id,
-      sellerId: product.sellerId,
-      title: product.title,
-      image: product.images[0],
-      price: product.discountedPrice || product.price,
-      quantity: 1,
-    });
+  const handleAddToCart = (product: NearbyProduct) => {
+    addToCart(
+      {
+        productId: product._id,
+        sellerId: product.sellerId,
+        sellerName: product.seller.businessName,
+        title: product.title,
+        image: product.images[0],
+        price: product.discountedPrice || product.price,
+        unit: product.unit || 'unit',
+      },
+      1
+    );
   };
 
   const handleLoadMore = () => {
     if (coords) {
-      fetchNearbyProducts(
-        {
-          lat: coords.lat,
-          lng: coords.lng,
-          radius: radiusKm,
-          category: selectedCategory === 'all' ? undefined : selectedCategory,
-          searchQuery: searchQuery || undefined,
-          sortBy,
-        },
-        true // append mode
-      );
+      fetchNearbyProducts({
+        lat: coords.lat,
+        lng: coords.lng,
+        radius: radiusKm,
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        searchQuery: searchQuery || undefined,
+        sortBy,
+        filterByLocation,
+        page: 2, // Load next page
+      });
     }
   };
 
@@ -315,17 +345,32 @@ export default function Home() {
                     )}
                   </div>
                 ) : (
-                  <label className="block text-[10px] uppercase tracking-wider text-textSecondary">
-                    Email or Mobile
-                    <input
-                      type="text"
-                      value={authIdentifier}
-                      onChange={(e) => setAuthIdentifier(e.target.value)}
-                      placeholder="email@nearnest.in or 9876543210"
-                      className="mt-2 w-full rounded-2xl border border-warmborder px-3 py-2 text-sm"
-                      required
-                    />
-                  </label>
+                  <>
+                    <label className="block text-[10px] uppercase tracking-wider text-textSecondary">
+                      Email or Mobile
+                      <input
+                        type="text"
+                        value={authIdentifier}
+                        onChange={(e) => setAuthIdentifier(e.target.value)}
+                        placeholder="email@nearnest.in or 9876543210"
+                        className="mt-2 w-full rounded-2xl border border-warmborder px-3 py-2 text-sm"
+                        required
+                      />
+                    </label>
+
+                    <div className="sm:col-span-2 flex flex-col gap-3 mt-3">
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="radio" name="loginRole" checked={loginAsRole === 'buyer'} onChange={() => setLoginAsRole('buyer')} />
+                          <span className="text-[11px] text-textSecondary">Login as Buyer</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="radio" name="loginRole" checked={loginAsRole === 'seller'} onChange={() => setLoginAsRole('seller')} />
+                          <span className="text-[11px] text-textSecondary">Login as Seller</span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <label className="block text-[10px] uppercase tracking-wider text-textSecondary">
@@ -358,15 +403,40 @@ export default function Home() {
           )}
 
           {/* Location Info */}
-          {coords ? (
-            <div className="text-xs text-gray-600 mb-3">
+          <div className="mb-3">
+            <div className="text-xs text-gray-600 mb-2">
               📍 {coords.label || `${coords.lat.toFixed(4)}°, ${coords.lng.toFixed(4)}°`}
             </div>
-          ) : (
-            <div className="mb-3">
-              <LocationPicker />
+            <div className="flex flex-wrap gap-2 mb-2">
+              <button
+                type="button"
+                onClick={acquireDeviceGPS}
+                disabled={loading}
+                className="px-3 py-2 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold hover:bg-orange-200 transition disabled:opacity-50"
+              >
+                {loading ? 'Detecting location...' : 'Use current GPS location'}
+              </button>
+              <button
+                type="button"
+                onClick={() => selectManualLocation(SEEDED_HUBS[0])}
+                className="px-3 py-2 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition"
+              >
+                Set default Calicut hub
+              </button>
             </div>
-          )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+              {SEEDED_HUBS.map((hub) => (
+                <button
+                  key={hub.label}
+                  type="button"
+                  onClick={() => selectManualLocation(hub)}
+                  className="rounded-full border border-orange-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 transition"
+                >
+                  {hub.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Search Bar */}
           <div className="flex gap-2 mb-3">
@@ -437,8 +507,27 @@ export default function Home() {
 
           {/* Radius Slider */}
           {coords && (
-            <div className="mb-3">
+            <div className="mb-3 space-y-3">
               <RadiusSlider value={radiusKm} onChange={setRadiusKm} />
+              
+              {/* Location Filter Toggle */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-orange-50 rounded-lg border border-orange-200">
+                <input
+                  type="checkbox"
+                  id="locationFilter"
+                  checked={filterByLocation}
+                  onChange={(e) => setFilterByLocation(e.target.checked)}
+                  className="w-4 h-4 rounded cursor-pointer"
+                />
+                <label htmlFor="locationFilter" className="flex-1 cursor-pointer">
+                  <p className="text-sm font-semibold text-gray-800">Show nearby products only</p>
+                  <p className="text-xs text-gray-600">
+                    {filterByLocation 
+                      ? 'Filtering to show only products within your radius' 
+                      : 'Showing all products, sorted by distance'}
+                  </p>
+                </label>
+              </div>
             </div>
           )}
         </div>
@@ -526,6 +615,7 @@ export default function Home() {
                     lat: coords.lat,
                     lng: coords.lng,
                     radius: radiusKm,
+                    filterByLocation,
                   })
                 }
                 className="mt-2 text-sm text-red-600 hover:text-red-700 font-medium"
@@ -533,6 +623,22 @@ export default function Home() {
                 Try again
               </button>
             </div>
+          </div>
+        )}
+
+        {/* No Products Found */}
+        {coords && !isLoading && !error && products.length === 0 && (
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center mb-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">No products found nearby</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Your current location does not have listings. Try increasing the radius or selecting a seeded Calicut hub above.
+            </p>
+            <button
+              onClick={() => selectManualLocation(SEEDED_HUBS[0])}
+              className="px-4 py-2 rounded-full bg-orange-600 text-white text-sm font-semibold hover:bg-orange-700 transition"
+            >
+              Show Calicut Beach products
+            </button>
           </div>
         )}
 
@@ -544,7 +650,11 @@ export default function Home() {
             <p className="text-sm text-amber-700 mb-4">
               Share your location to discover nearby homemade products from local sellers
             </p>
-            <LocationPicker />
+            <LocationPicker
+              onLocationSelect={(lat, lng) => selectManualLocation({ lat, lng, label: 'Selected location' })}
+              currentLocation={currentLocation}
+              isLoading={loading}
+            />
           </div>
         )}
 

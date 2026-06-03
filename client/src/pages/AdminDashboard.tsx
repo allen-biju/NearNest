@@ -42,7 +42,7 @@ export const AdminDashboard: React.FC = () => {
       });
       const metricsData = await metricsRes.json();
       if (metricsData.success) {
-        setAdminMetrics(metricsData.data);
+        setAdminMetrics(metricsData.data.metrics);
       }
 
       // Fetch pending sellers
@@ -85,6 +85,28 @@ export const AdminDashboard: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/checkout');
+  };
+
+  const handleSellerApproval = async (sellerId: string, action: 'approve' | 'reject') => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/v1/admin/sellers/${sellerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAdminDashboard();
+      } else {
+        alert(data.error?.message || 'Failed to update seller approval status');
+      }
+    } catch (err) {
+      console.error('Seller approval error:', err);
+    }
   };
 
   if (loading) {
@@ -161,11 +183,17 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                   <p className="text-sm text-textSecondary">{seller.email}</p>
                   <div className="flex gap-2 mt-3">
-                    <button className="flex-1 py-1 px-2 bg-green-100 text-green-700 text-xs font-bold rounded hover:bg-green-200 transition-colors flex items-center justify-center gap-1">
+                    <button
+                      onClick={() => handleSellerApproval(seller._id, 'approve')}
+                      className="flex-1 py-1 px-2 bg-green-100 text-green-700 text-xs font-bold rounded hover:bg-green-200 transition-colors flex items-center justify-center gap-1"
+                    >
                       <CheckCircle className="w-4 h-4" />
                       Approve
                     </button>
-                    <button className="flex-1 py-1 px-2 bg-red-100 text-red-700 text-xs font-bold rounded hover:bg-red-200 transition-colors flex items-center justify-center gap-1">
+                    <button
+                      onClick={() => handleSellerApproval(seller._id, 'reject')}
+                      className="flex-1 py-1 px-2 bg-red-100 text-red-700 text-xs font-bold rounded hover:bg-red-200 transition-colors flex items-center justify-center gap-1"
+                    >
                       <XCircle className="w-4 h-4" />
                       Reject
                     </button>

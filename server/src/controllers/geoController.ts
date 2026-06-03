@@ -12,8 +12,10 @@ import logger from '../config/logger';
  */
 export const getNearbyProducts = async (req: AuthRequest, res: Response) => {
   try {
-    const { lat, lng, radius = 5, category, sort = 'distance', searchQuery, minPrice, maxPrice, dietaryTags } = req.query;
+    const { lat, lng, radius = 5, category, sort = 'distance', searchQuery, search, minPrice, maxPrice, dietaryTags, filterByLocation = 'true' } = req.query;
     const { page, limit, skip } = getPaginationParams(req);
+    const normalizedSearchQuery = (searchQuery as string) || (search as string);
+    const shouldFilterByLocation = filterByLocation === 'true' || filterByLocation === true;
 
     if (!lat || !lng) {
       return sendError(res, 'INVALID_LOCATION', 'Latitude and longitude required', 400);
@@ -25,19 +27,20 @@ export const getNearbyProducts = async (req: AuthRequest, res: Response) => {
       parseInt(radius as string) || 5,
       {
         category: category as string,
-        searchQuery: searchQuery as string,
+        searchQuery: normalizedSearchQuery as string,
         minPrice: minPrice ? parseInt(minPrice as string) : undefined,
         maxPrice: maxPrice ? parseInt(maxPrice as string) : undefined,
         dietaryTags: dietaryTags ? (dietaryTags as string).split(',') : undefined,
         sortBy: sort as any,
         skip,
-        limit
+        limit,
+        filterByLocation: shouldFilterByLocation
       }
     );
 
     const pagination = createPaginationResponse(result.total, page, limit);
 
-    return sendSuccess(res, result.products, 'Nearby products retrieved', 200, pagination);
+    return sendSuccess(res, result.products, 'Products retrieved', 200, pagination);
   } catch (error: any) {
     logger.error('Get nearby products error:', error);
     return sendError(res, 'GEO_ERROR', error.message, 400);

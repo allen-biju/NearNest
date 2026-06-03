@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-interface NearbyProduct {
+export interface NearbyProduct {
   _id: string;
   title: string;
   price: number;
@@ -9,6 +9,8 @@ interface NearbyProduct {
   rating: { average: number; count: number };
   distanceFromUser: string;
   seller: { businessName: string; slug: string };
+  sellerId: string;
+  unit?: string;
   preparationTimeMinutes?: number;
 }
 
@@ -19,6 +21,7 @@ interface FetchFilters {
   category?: string;
   searchQuery?: string;
   sortBy?: 'distance' | 'rating' | 'price';
+  filterByLocation?: boolean; // New parameter
   page?: number;
 }
 
@@ -48,6 +51,7 @@ export const useNearbyProducts = (): UseNearbyProductsReturn => {
         category,
         searchQuery,
         sortBy = 'distance',
+        filterByLocation = true,
         page = 1
       } = filters;
 
@@ -57,7 +61,8 @@ export const useNearbyProducts = (): UseNearbyProductsReturn => {
         radius: radius.toString(),
         page: page.toString(),
         limit: '20',
-        sort: sortBy
+        sort: sortBy,
+        filterByLocation: filterByLocation.toString()
       });
 
       if (category) {
@@ -65,7 +70,7 @@ export const useNearbyProducts = (): UseNearbyProductsReturn => {
       }
 
       if (searchQuery) {
-        params.append('search', searchQuery);
+        params.append('searchQuery', searchQuery);
       }
 
       const apiRoot = import.meta.env.VITE_API_URL?.trim() || '/api/v1';
@@ -77,7 +82,7 @@ export const useNearbyProducts = (): UseNearbyProductsReturn => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch nearby products');
+        throw new Error('Failed to fetch products');
       }
 
       const data = await response.json();
@@ -93,7 +98,7 @@ export const useNearbyProducts = (): UseNearbyProductsReturn => {
         throw new Error(data.error?.message || 'Failed to fetch products');
       }
     } catch (err: any) {
-      console.error('Error fetching nearby products:', err);
+      console.error('Error fetching products:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);

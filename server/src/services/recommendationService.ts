@@ -113,7 +113,7 @@ export class RecommendationService {
       queryConditions.category = category;
     }
 
-    const pipeline = [
+    const pipeline: any[] = [
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [lng, lat] },
@@ -131,6 +131,6 @@ export class RecommendationService {
       { $sort: { distanceKm: 1 } }
     ];
 
-    return await Seller.aggregate(pipeline);
+    return await Seller.aggregate<any>(pipeline);
   }
 }

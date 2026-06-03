@@ -142,8 +142,8 @@ export const Checkout: React.FC = () => {
         alert('Please enter your email address');
         return;
       }
-      const success = await login(authEmail, authPassword);
-      if (success) {
+      const loginResult = await login(authEmail, authPassword);
+      if (loginResult.success) {
         setAuthEmail('');
         setAuthPassword('');
         navigate('/');

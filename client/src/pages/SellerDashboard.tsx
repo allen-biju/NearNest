@@ -9,6 +9,7 @@ import {
   TrendingUp, 
   Users, 
   Award,
+  ShoppingBag,
   LogOut,
   Clock,
   ListPlus,
@@ -45,6 +46,9 @@ export const SellerDashboard: React.FC = () => {
   const [newDesc, setNewDesc] = useState<string>('Made fresh in my kitchen with organic home-ground ingredients.');
   const [newIngredients, setNewIngredients] = useState<string>('Flour, pure water, home starter, salt');
   const [newPreparationTime, setNewPreparationTime] = useState<number>(30);
+  const [newStock, setNewStock] = useState<number>(10);
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [newImagePreview, setNewImagePreview] = useState<string>('');
   const [showProductForm, setShowProductForm] = useState<boolean>(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
 
@@ -92,6 +96,19 @@ export const SellerDashboard: React.FC = () => {
     fetchSellerDashboard();
   }, [token]);
 
+  const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read image file'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read image file'));
+    reader.readAsDataURL(file);
+  });
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !newTitle.trim()) {
@@ -101,21 +118,29 @@ export const SellerDashboard: React.FC = () => {
 
     try {
       setIsSubmittingProduct(true);
+      const payload: any = {
+        title: newTitle,
+        price: newPrice,
+        unit: newUnit,
+        category: newCategory,
+        description: newDesc,
+        ingredients: newIngredients,
+        preparationTimeMinutes: newPreparationTime,
+        stock: newStock,
+      };
+
+      if (newImageFile) {
+        const imageDataUrl = await fileToDataUrl(newImageFile);
+        payload.images = [imageDataUrl];
+      }
+
       const res = await fetch('/api/v1/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          title: newTitle,
-          price: newPrice,
-          unit: newUnit,
-          category: newCategory,
-          description: newDesc,
-          ingredients: newIngredients,
-          preparationTimeMinutes: newPreparationTime,
-        })
+        body: JSON.stringify(payload)
       });
       
       const data = await res.json();
@@ -126,6 +151,9 @@ export const SellerDashboard: React.FC = () => {
         setNewDesc('Made fresh in my kitchen with organic home-ground ingredients.');
         setNewIngredients('Flour, pure water, home starter, salt');
         setNewPreparationTime(30);
+        setNewStock(10);
+        setNewImageFile(null);
+        setNewImagePreview('');
         setShowProductForm(false);
         fetchSellerDashboard();
       } else {
@@ -186,7 +214,16 @@ export const SellerDashboard: React.FC = () => {
               <h1 className="text-2xl font-bold text-primary">Seller Hub</h1>
               <p className="text-sm text-textSecondary">Manage your store & products</p>
             </div>
-            <Store className="w-8 h-8 text-primary" />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/seller-settings')}
+                className="p-2 hover:bg-primary/10 rounded-lg transition"
+                title="Store Settings"
+              >
+                <Settings className="w-6 h-6 text-primary" />
+              </button>
+              <Store className="w-8 h-8 text-primary" />
+            </div>
           </div>
         </div>
       </header>
@@ -259,19 +296,33 @@ export const SellerDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Add Product Button */}
-        {!showProductForm && (
-          <button
-            onClick={() => setShowProductForm(true)}
-            className="w-full py-3 px-4 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-6 flex items-center justify-center gap-2"
-          >
-            <ListPlus className="w-5 h-5" />
-            Add New Product
-          </button>
+        {/* Add Product Button or Pending Approval Notice */}
+        {!showProductForm && sellerProfile && (
+          sellerProfile.isApproved ? (
+            <button
+              onClick={() => setShowProductForm(true)}
+              className="w-full py-3 px-4 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-6 flex items-center justify-center gap-2"
+            >
+              <ListPlus className="w-5 h-5" />
+              Add New Product
+            </button>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-2xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 mt-1 text-yellow-700" />
+                <div>
+                  <p className="font-semibold">Seller application pending approval</p>
+                  <p className="text-sm text-yellow-800">
+                    Your store is not approved yet. Product listings can only be created after admin approval.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )
         )}
 
         {/* Add Product Form */}
-        {showProductForm && (
+        {showProductForm && sellerProfile?.isApproved && (
           <div className="bg-white rounded-2xl p-6 mb-6 border border-primary/10 shadow-sm">
             <h3 className="text-lg font-bold text-textPrimary mb-4">Add New Product</h3>
             <form onSubmit={handleAddProduct} className="space-y-4">
@@ -315,6 +366,49 @@ export const SellerDashboard: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-semibold text-textPrimary block mb-2">Stock *</label>
+                  <input
+                    type="number"
+                    value={newStock}
+                    onChange={(e) => setNewStock(parseInt(e.target.value, 10))}
+                    min="0"
+                    className="w-full px-4 py-2 border border-primary/20 rounded-lg focus:border-primary focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-textPrimary block mb-2">Image *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setNewImageFile(file);
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === 'string') {
+                            setNewImagePreview(reader.result);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      } else {
+                        setNewImagePreview('');
+                      }
+                    }}
+                    className="w-full text-sm text-textSecondary"
+                  />
+                </div>
+              </div>
+
+              {newImagePreview && (
+                <div className="border border-primary/20 rounded-2xl overflow-hidden mt-3">
+                  <img src={newImagePreview} alt="Preview" className="w-full h-48 object-cover" />
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-semibold text-textPrimary block mb-2">Category *</label>
