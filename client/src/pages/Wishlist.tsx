@@ -4,7 +4,7 @@ import ProductCard from '../components/discovery/ProductCard';
 import { useNavigate } from 'react-router-dom';
 
 export const Wishlist: React.FC = () => {
-  const { items, toggle, remove } = useWishlist();
+  const { items, toggle } = useWishlist();
   const navigate = useNavigate();
 
   if (items.length === 0) {

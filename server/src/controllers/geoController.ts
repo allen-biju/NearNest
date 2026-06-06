@@ -15,7 +15,7 @@ export const getNearbyProducts = async (req: AuthRequest, res: Response) => {
     const { lat, lng, radius = 5, category, sort = 'distance', searchQuery, search, minPrice, maxPrice, dietaryTags, filterByLocation = 'true' } = req.query;
     const { page, limit, skip } = getPaginationParams(req);
     const normalizedSearchQuery = (searchQuery as string) || (search as string);
-    const shouldFilterByLocation = filterByLocation === 'true' || filterByLocation === true;
+    const shouldFilterByLocation = filterByLocation !== 'false';
 
     if (!lat || !lng) {
       return sendError(res, 'INVALID_LOCATION', 'Latitude and longitude required', 400);

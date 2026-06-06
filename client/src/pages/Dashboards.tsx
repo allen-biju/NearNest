@@ -13,12 +13,8 @@ import {
   Power,
   Clock,
   ListPlus,
-  Compass,
-  MapPin,
   CheckCircle,
-  XCircle,
-  ThumbsUp,
-  AlertCircle
+  XCircle
 } from 'lucide-react';
 
 export const Dashboards: React.FC = () => {
@@ -28,14 +24,13 @@ export const Dashboards: React.FC = () => {
   // Redirect if not logged in
   useEffect(() => {
     if (!user) {
-      navigate('/checkout');
+      navigate('/login');
     }
   }, [user, navigate]);
 
   // ----------------------------------------------------
   // SELLER STATES
   // ----------------------------------------------------
-  const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [sellerOrders, setSellerOrders] = useState<any[]>([]);
   const [sellerMetrics, setSellerMetrics] = useState<any>(null);
   const [isOpen, setIsOpen] = useState<boolean>(true);
@@ -45,9 +40,9 @@ export const Dashboards: React.FC = () => {
   const [newPrice, setNewPrice] = useState<number>(100);
   const [newUnit, setNewUnit] = useState<string>('portion');
   const [newCategory, setNewCategory] = useState<string>('bakery');
-  const [newDesc, setNewDesc] = useState<string>('Made fresh in my kitchen with organic home-ground ingredients.');
-  const [newIngredients, setNewIngredients] = useState<string>('Flour, pure water, home starter, salt');
   const [newPreparationTime, setNewPreparationTime] = useState<number>(30);
+  const newDesc = 'Made fresh in my kitchen with organic home-ground ingredients.';
+  const newIngredients = 'Flour, pure water, home starter, salt';
   const [showProductForm, setShowProductForm] = useState<boolean>(false);
 
   // ----------------------------------------------------
@@ -56,7 +51,8 @@ export const Dashboards: React.FC = () => {
   const [adminMetrics, setAdminMetrics] = useState<any>(null);
   const [pendingSellers, setPendingSellers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [allOrders, setAllOrders] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_allOrders, setAllOrders] = useState<any[]>([]);
 
   // ----------------------------------------------------
   // COMMON EFFECTS
@@ -68,7 +64,7 @@ export const Dashboards: React.FC = () => {
       const profileRes = await fetch('/api/v1/sellers/settings', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const profileData = await profileRes.json();
+      await profileRes.json();
       // Since storefront uses settings or query, if they are already registered:
       
       // 2. Fetch seller orders
@@ -345,7 +341,7 @@ export const Dashboards: React.FC = () => {
                 <p className="text-xs text-textSecondary italic text-center py-4">No active orders queued in your kitchen.</p>
               ) : (
                 <div className="space-y-4 divide-y divide-warmborder">
-                  {sellerOrders.map((order, idx) => (
+                  {sellerOrders.map((order) => (
                     <div key={order._id} className="pt-4 first:pt-0 space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-mono font-black text-textPrimary">{order.orderNumber}</span>

@@ -2,20 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useGeolocator } from '../hooks/useGeolocator';
-import { useTranslation } from '../context/TranslationContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   MapPin, 
   Wallet, 
   CreditCard, 
-  Sparkles, 
   ShoppingBag,
-  ShieldCheck,
   CheckCircle,
   Truck,
   Building
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Distance calculation helper inside React
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -31,18 +29,11 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export const Checkout: React.FC = () => {
-  const { user, token, login, signup, refetchUser } = useAuth();
+  const { user, token } = useAuth();
+  if (!user) return null;
   const { cart, getTotal, clearCart } = useCart();
   const { coords } = useGeolocator();
-  const { t, language } = useTranslation();
   const navigate = useNavigate();
-
-  // Authentication forms states
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
-  const [authEmail, setAuthEmail] = useState<string>('');
-  const [authPassword, setAuthPassword] = useState<string>('password123');
-  const [authName, setAuthName] = useState<string>('');
-  const [authPhone, setAuthPhone] = useState<string>('');
 
   // Checkout configurations
   const [selectedAddressIndex, setSelectedAddressIndex] = useState<number>(0);
@@ -115,41 +106,7 @@ export const Checkout: React.FC = () => {
     calculateDeliveryFees();
   }, [cart, user, selectedAddressIndex, deliveryMode, coords]);
 
-  // Handle Quick Login
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isRegistering) {
-      if (!authName || !authEmail || !authPhone) {
-        alert('Please fill all registration fields');
-        return;
-      }
-      const success = await signup({
-        name: authName,
-        email: authEmail,
-        phone: authPhone,
-        password: authPassword
-      });
-      if (success) {
-        setIsRegistering(false);
-        setAuthName('');
-        setAuthPhone('');
-        setAuthEmail('');
-        setAuthPassword('');
-        navigate('/');
-      }
-    } else {
-      if (!authEmail) {
-        alert('Please enter your email address');
-        return;
-      }
-      const loginResult = await login(authEmail, authPassword);
-      if (loginResult.success) {
-        setAuthEmail('');
-        setAuthPassword('');
-        navigate('/');
-      }
-    }
-  };
+  // Removed local auth submit handler since login is now separate.
 
   const handlePlaceOrderSubmit = async () => {
     try {
@@ -259,144 +216,56 @@ export const Checkout: React.FC = () => {
   };
 
   return (
-    <div className="pb-32">
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="pb-32"
+    >
       {/* HEADER BAR */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md px-4 py-3 border-b border-warmborder flex items-center justify-between">
-        <button 
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md px-4 py-3.5 border-b border-warmborder/85 flex items-center justify-between shadow-[0_4px_24px_rgba(26,18,8,0.01)]">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
           onClick={() => navigate('/cart')} 
-          className="p-1.5 bg-white border border-warmborder rounded-full hover:bg-surface text-textPrimary"
+          className="p-2 bg-white border border-warmborder rounded-full hover:bg-surface text-textPrimary shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-        </button>
-        <h2 className="font-bold text-xs uppercase tracking-wider text-textSecondary">
+        </motion.button>
+        <h2 className="text-xs font-black uppercase tracking-wider text-textSecondary">
           Secure Checkout
         </h2>
         <div className="w-8 h-8" />
       </div>
 
       {/* ---------------------------------------------------- */}
-      {/* CASE A: USER NOT LOGGED IN - QUICK AUTH PANEL */}
+      {/* SHOW CHECKOUT WIZARD FORM */}
       {/* ---------------------------------------------------- */}
-      {!user ? (
-        <div className="max-w-lg mx-auto px-4 mt-6">
-          <div className="bg-white border border-warmborder rounded-3xl p-6 shadow-premium space-y-5">
-            <div className="text-center space-y-1">
-              <span className="p-2 bg-primary/10 rounded-full inline-block text-primary">
-                <ShieldCheck className="w-6 h-6" />
-              </span>
-              <h3 className="font-serif font-black text-lg text-textPrimary">
-                {isRegistering ? 'Create Your Account' : 'Welcome Back Neighbor!'}
-              </h3>
-              <p className="text-xs text-textSecondary max-w-xs mx-auto leading-relaxed">
-                Join NearNest to track home-delivered fresh bakes and support Calicut cottage business creators.
-              </p>
-            </div>
-
-            <form onSubmit={handleAuthSubmit} className="space-y-4">
-              {isRegistering && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-textSecondary">Full Name</label>
-                    <input 
-                      type="text" 
-                      value={authName}
-                      onChange={(e) => setAuthName(e.target.value)}
-                      placeholder="Ananya Ramesh" 
-                      className="w-full px-3 py-2 bg-background border border-warmborder rounded-xl text-xs"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-textSecondary">Phone Number</label>
-                    <input 
-                      type="text" 
-                      value={authPhone}
-                      onChange={(e) => setAuthPhone(e.target.value)}
-                      placeholder="9876543210" 
-                      className="w-full px-3 py-2 bg-background border border-warmborder rounded-xl text-xs"
-                      required
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-textSecondary">Email Address</label>
-                <input 
-                  type="email" 
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="buyer@nearnest.in" 
-                  className="w-full px-3 py-2 bg-background border border-warmborder rounded-xl text-xs"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-textSecondary">Password</label>
-                  {!isRegistering && (
-                    <span className="text-[10px] font-bold text-primary hover:underline cursor-pointer">Forgot?</span>
-                  )}
-                </div>
-                <input 
-                  type="password" 
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="••••••••" 
-                  className="w-full px-3 py-2 bg-background border border-warmborder rounded-xl text-xs"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-primary hover:bg-primary-dark text-white text-xs font-black rounded-xl uppercase tracking-widest transition-colors shadow-premium mt-2"
-              >
-                {isRegistering ? 'Register & Claim Bonus' : 'Sign In Securely'}
-              </button>
-            </form>
-
-            <div className="text-center pt-2 border-t border-dotted border-warmborder">
-              <button
-                onClick={() => setIsRegistering(!isRegistering)}
-                className="text-xs text-secondary font-bold hover:underline"
-              >
-                {isRegistering ? 'Already have an account? Sign In' : 'New here? Register to claim ₹50 Signup Bonus!'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ---------------------------------------------------- */
-        /* CASE B: USER LOGGED IN - SHOW CHECKOUT WIZARD FORM */
-        /* ---------------------------------------------------- */
-        <div className="max-w-lg mx-auto px-4 mt-4 space-y-5">
+      <div className="max-w-lg mx-auto px-4 mt-4 space-y-4">
           
           {/* 1. DELIVERY MODE SELECTOR */}
-          <div className="grid grid-cols-2 gap-2 bg-white border border-warmborder rounded-xl p-1 shadow-sm">
+          <div className="grid grid-cols-2 gap-2 bg-white border border-warmborder rounded-2xl p-1 shadow-sm">
             <button
               onClick={() => setDeliveryMode('delivery')}
-              className={`py-2 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 ${
+              className={`py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                 deliveryMode === 'delivery' ? 'bg-primary text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary'
               }`}
             >
-              <Truck className="w-3.5 h-3.5" />
+              <Truck className="w-4 h-4" />
               Home Delivery
             </button>
             <button
               onClick={() => setDeliveryMode('pickup')}
-              className={`py-2 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1.5 ${
+              className={`py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                 deliveryMode === 'pickup' ? 'bg-primary text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary'
               }`}
             >
-              <Building className="w-3.5 h-3.5" />
+              <Building className="w-4 h-4" />
               Kitchen Pickup
             </button>
           </div>
 
           {/* 2. DELIVERY ADDRESS ADDRESSES SELECTOR */}
-          <div className="bg-white border border-warmborder rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-white border border-warmborder rounded-[24px] p-5 shadow-sm space-y-3.5">
             <h3 className="font-serif font-black text-sm text-textPrimary flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-primary" />
               <span>{deliveryMode === 'delivery' ? 'Delivery Address' : 'Pickup Instructions'}</span>
@@ -411,63 +280,69 @@ export const Checkout: React.FC = () => {
                 {/* Saved addresses loop */}
                 {user.addresses && user.addresses.length > 0 && !isAddingCustomAddress ? (
                   <div className="space-y-2">
-                    {user.addresses.map((addr, idx) => (
-                      <label 
-                        key={idx}
-                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                          selectedAddressIndex === idx
-                            ? 'bg-primary/5 border-primary text-textPrimary'
-                            : 'hover:bg-background border-warmborder text-textSecondary'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          name="addressGroup" 
-                          checked={selectedAddressIndex === idx}
-                          onChange={() => setSelectedAddressIndex(idx)}
-                          className="mt-1 accent-primary"
-                        />
-                        <div className="text-left">
-                          <p className="text-xs font-black text-textPrimary">{addr.label}</p>
-                          <p className="text-[11px] leading-relaxed mt-0.5">{addr.addressLine}, {addr.city}</p>
-                        </div>
-                      </label>
-                    ))}
+                    {user.addresses.map((addr, idx) => {
+                      const isActive = selectedAddressIndex === idx;
+                      return (
+                        <label 
+                          key={idx}
+                          className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                            isActive
+                              ? 'bg-primary/5 border-primary text-textPrimary ring-2 ring-primary/10'
+                              : 'hover:bg-background border-warmborder text-textSecondary'
+                          }`}
+                        >
+                          <input 
+                            type="radio" 
+                            name="addressGroup" 
+                            checked={selectedAddressIndex === idx}
+                            onChange={() => setSelectedAddressIndex(idx)}
+                            className="mt-1 accent-primary"
+                          />
+                          <div className="text-left">
+                            <p className="text-xs font-black text-textPrimary flex items-center gap-1.5">
+                              {addr.label}
+                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                            </p>
+                            <p className="text-[11px] leading-relaxed mt-0.5 text-textSecondary">{addr.addressLine}, {addr.city}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
                     
                     <button 
                       onClick={() => setIsAddingCustomAddress(true)}
-                      className="text-xs font-bold text-primary hover:underline block pt-1"
+                      className="text-xs font-black text-primary hover:underline block pt-1.5"
                     >
                       + Add a custom checkout address
                     </button>
                   </div>
                 ) : (
                   /* Custom coordinate typed address */
-                  <div className="space-y-3 p-3 bg-background border border-warmborder rounded-xl">
+                  <div className="space-y-3 p-4 bg-background border border-warmborder rounded-2xl">
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase tracking-wider text-textSecondary">Street Address Line</label>
+                      <label className="text-[9px] font-black uppercase tracking-wider text-textSecondary">Street Address Line *</label>
                       <input 
                         type="text"
                         value={customAddressLine}
                         onChange={(e) => setCustomAddressLine(e.target.value)}
                         placeholder="House No. 12, Mavoor Road Bypass, Calicut"
-                        className="w-full px-3 py-2 bg-white border border-warmborder rounded-lg text-xs"
+                        className="input-base bg-white"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-textSecondary">Pincode</label>
+                        <label className="text-[9px] font-black uppercase tracking-wider text-textSecondary">Pincode *</label>
                         <input 
                           type="text"
                           value={customPincode}
                           onChange={(e) => setCustomPincode(e.target.value)}
                           placeholder="673016"
-                          className="w-full px-3 py-2 bg-white border border-warmborder rounded-lg text-xs"
+                          className="input-base bg-white"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-textSecondary">Selected Coords Hub</label>
-                        <span className="block text-[10px] font-mono font-bold text-textPrimary pt-2.5">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-textSecondary">Selected Coords Hub</label>
+                        <span className="block text-[11px] font-mono font-bold text-textPrimary pt-3">
                           {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
                         </span>
                       </div>
@@ -489,19 +364,19 @@ export const Checkout: React.FC = () => {
 
           {/* 3. PROMO NEIGHBOR WALLET REBATE */}
           {user.walletBalance > 0 && (
-            <div className="bg-white border border-warmborder rounded-2xl p-4 shadow-sm space-y-2">
+            <div className="bg-white border border-warmborder rounded-[24px] p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-textPrimary">
                   <Wallet className="w-4 h-4 text-emerald-600" />
-                  <h3 className="font-serif font-black text-sm">Neighbor Referral Wallet</h3>
+                  <h3 className="font-serif font-black text-sm">Referral Wallet</h3>
                 </div>
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded font-mono">
+                <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-lg font-mono border border-emerald-100">
                   Balance: ₹{user.walletBalance}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 rounded-xl p-3">
-                <p className="text-[11px] text-emerald-800 font-medium">
+              <label className="flex items-center justify-between bg-emerald-50/40 border border-emerald-100 rounded-2xl p-3.5 cursor-pointer">
+                <p className="text-[11px] text-emerald-800 font-bold">
                   Apply wallet balance for this purchase?
                 </p>
                 <input 
@@ -510,12 +385,12 @@ export const Checkout: React.FC = () => {
                   onChange={(e) => setUseWallet(e.target.checked)}
                   className="w-4.5 h-4.5 text-primary accent-emerald-600 shrink-0 cursor-pointer"
                 />
-              </div>
+              </label>
             </div>
           )}
 
           {/* 4. CHOOSE SECURE PAYMENT OPTIONS */}
-          <div className="bg-white border border-warmborder rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-white border border-warmborder rounded-[24px] p-5 shadow-sm space-y-3.5">
             <h3 className="font-serif font-black text-sm text-textPrimary flex items-center gap-1.5">
               <CreditCard className="w-4 h-4 text-primary" />
               <span>Choose Payment Method</span>
@@ -523,9 +398,9 @@ export const Checkout: React.FC = () => {
 
             <div className="space-y-2">
               <label 
-                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'Razorpay'
-                    ? 'bg-primary/5 border-primary text-textPrimary'
+                    ? 'bg-primary/5 border-primary text-textPrimary ring-2 ring-primary/10'
                     : 'hover:bg-background border-warmborder text-textSecondary'
                 }`}
               >
@@ -539,18 +414,18 @@ export const Checkout: React.FC = () => {
                   />
                   <div>
                     <p className="text-xs font-black text-textPrimary flex items-center gap-1">
-                      💳 Online Payment (Razorpay Sandbox)
+                      💳 Online Sandbox Payment
                     </p>
-                    <p className="text-[10px] text-textSecondary mt-0.5">UPI, GPay, Credit/Debit cards instantly</p>
+                    <p className="text-[10px] text-textSecondary mt-0.5 font-medium">UPI, GPay, Credit/Debit cards instantly</p>
                   </div>
                 </div>
-                <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[8px] font-bold rounded">Instant</span>
+                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[8px] font-black rounded uppercase tracking-wider">Instant</span>
               </label>
 
               <label 
-                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'COD'
-                    ? 'bg-primary/5 border-primary text-textPrimary'
+                    ? 'bg-primary/5 border-primary text-textPrimary ring-2 ring-primary/10'
                     : 'hover:bg-background border-warmborder text-textSecondary'
                 }`}
               >
@@ -566,7 +441,7 @@ export const Checkout: React.FC = () => {
                     <p className="text-xs font-black text-textPrimary">
                       💵 Cash on Delivery (COD)
                     </p>
-                    <p className="text-[10px] text-textSecondary mt-0.5">Pay in cash when neighbors deliver</p>
+                    <p className="text-[10px] text-textSecondary mt-0.5 font-medium">Pay in cash when neighbors deliver</p>
                   </div>
                 </div>
               </label>
@@ -574,23 +449,23 @@ export const Checkout: React.FC = () => {
           </div>
 
           {/* 5. ITEMWISE DELIVERIES SPLIT BREAKDOWN */}
-          <div className="bg-white border border-warmborder rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-white border border-warmborder rounded-[24px] p-5 shadow-sm space-y-3.5">
             <h3 className="font-serif font-black text-sm text-textPrimary">Delivery Schedule Breakdown</h3>
             
             <div className="space-y-3 divide-y divide-warmborder">
-              {cart.map((item, idx) => {
+              {cart.map((item) => {
                 const sRate = sellerRates[item.sellerId] || { fee: 0, distance: 0 };
                 return (
                   <div key={item.productId} className="flex justify-between items-center gap-4 text-xs pt-3 first:pt-0">
                     <div className="min-w-0">
                       <p className="font-serif font-black text-textPrimary truncate">{item.title}</p>
-                      <p className="text-[10px] text-textSecondary truncate">🏡 {item.sellerName} · {sRate.distance.toFixed(1)} km away</p>
+                      <p className="text-[10px] text-textSecondary truncate mt-0.5">🏡 {item.sellerName} · {sRate.distance.toFixed(1)} km away</p>
                     </div>
 
                     <div className="text-right shrink-0">
                       <p className="font-bold text-textPrimary font-mono">₹{item.price * item.quantity}</p>
                       {deliveryMode === 'delivery' && (
-                        <p className="text-[9px] text-secondary font-semibold font-mono">Delivery: +₹{sRate.fee}</p>
+                        <p className="text-[9px] text-secondary font-black font-mono">Delivery: +₹{sRate.fee}</p>
                       )}
                     </div>
                   </div>
@@ -600,143 +475,154 @@ export const Checkout: React.FC = () => {
           </div>
 
           {/* 6. PLATFORM CHECKS BILL DETAILS */}
-          <div className="bg-white border border-warmborder rounded-2xl p-4 shadow-sm space-y-2.5">
-            <h3 className="font-serif font-black text-xs uppercase tracking-wider text-textSecondary">Billing Breakdown</h3>
+          <div className="bg-white border border-warmborder rounded-[24px] p-5 shadow-sm space-y-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-textSecondary pb-2.5 border-b border-dotted border-warmborder">Billing Details</h3>
             
-            <div className="flex justify-between text-xs">
-              <span className="text-textSecondary">Homemade Subtotal</span>
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-textSecondary">Creations Subtotal</span>
               <span className="font-bold text-textPrimary font-mono">₹{creationsTotal}</span>
             </div>
 
             {deliveryMode === 'delivery' && (
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between text-xs font-medium">
                 <span className="text-textSecondary">Distance-aware Delivery Fees</span>
                 <span className="font-bold text-textPrimary font-mono">₹{deliveryTotal}</span>
               </div>
             )}
 
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-xs font-medium">
               <span className="text-textSecondary">Platform Safety Fee</span>
               <span className="font-bold text-textPrimary font-mono">₹{platformTotal}</span>
             </div>
 
             {walletDiscount > 0 && (
-              <div className="flex justify-between text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+              <div className="flex justify-between text-xs text-emerald-700 bg-emerald-50/60 px-3 py-1.5 rounded-xl border border-emerald-100/50">
                 <span className="font-bold">Referral Wallet Discount</span>
                 <span className="font-bold font-mono">-₹{walletDiscount}</span>
               </div>
             )}
 
-            <div className="flex justify-between text-sm font-black border-t border-dotted border-warmborder pt-2.5 text-primary">
+            <div className="flex justify-between text-sm font-black border-t border-dotted border-warmborder pt-3 text-primary">
               <span>Grand Total</span>
-              <span className="font-mono">₹{finalCheckoutAmount}</span>
+              <span className="font-mono text-base">₹{finalCheckoutAmount}</span>
             </div>
           </div>
 
         </div>
-      )}
 
       {/* STICKY FOOTER ACTIONS */}
-      {user && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-warmborder py-3.5 px-4 shadow-lifted">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-t border-warmborder/80 py-3.5 px-4 shadow-[0_-8px_30px_rgba(26,18,8,0.06)]">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] text-textSecondary uppercase tracking-wider font-semibold">Pay Amount</p>
+              <p className="text-[9px] text-textSecondary uppercase tracking-wider font-black">Secure Payment</p>
               <p className="text-lg font-black text-primary font-mono">₹{finalCheckoutAmount}</p>
             </div>
             
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               onClick={() => triggerOrderPlacement()}
               disabled={placingOrder}
-              className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white text-xs font-black rounded-xl shadow-premium uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 py-3.5 bg-primary hover:bg-primary-dark text-white text-xs font-black rounded-2xl shadow-premium uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
             >
-              <ShoppingBag className="w-4 h-4 animate-bounce" />
+              <ShoppingBag className="w-4 h-4" />
               <span>{placingOrder ? 'Confirming...' : 'Place Secure Order'}</span>
-            </button>
+            </motion.button>
           </div>
         </div>
-      )}
 
       {/* ---------------------------------------------------- */}
       {/* UPI / RAZORPAY SANDBOX SIMULATED OVERLAY */}
       {/* ---------------------------------------------------- */}
-      {showRazorpaySandbox && (
-        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl w-full max-w-sm overflow-hidden shadow-lifted p-6 space-y-6">
-            
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black italic">R</span>
-                <span className="text-xs font-black tracking-wider uppercase text-slate-300">Razorpay Payment Sandbox</span>
-              </div>
+      <AnimatePresence>
+        {showRazorpaySandbox && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="glassmorphism-dark text-white rounded-[32px] w-full max-w-sm overflow-hidden shadow-lifted p-6 space-y-6"
+            >
               
-              <button 
-                onClick={() => setShowRazorpaySandbox(false)}
-                className="text-xs text-slate-400 hover:text-white"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {paymentStep === 'method' && (
-              <div className="space-y-4">
-                <div className="text-center space-y-1">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">Simulating Checkout For</p>
-                  <p className="text-2xl font-black text-white font-mono">₹{finalCheckoutAmount}</p>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black italic">R</span>
+                  <span className="text-[10px] font-black tracking-wider uppercase text-slate-300">Razorpay Payment Sandbox</span>
                 </div>
-
-                <div className="space-y-2">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Select UPI Provider</p>
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'gpay', name: 'GPay', emoji: '🟢' },
-                      { id: 'phonepe', name: 'PhonePe', emoji: '🟣' },
-                      { id: 'paytm', name: 'Paytm', emoji: '🔵' }
-                    ].map((upi) => (
-                      <button
-                        key={upi.id}
-                        onClick={() => setSelectedUpi(upi.id)}
-                        className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-xs font-bold ${
-                          selectedUpi === upi.id
-                            ? 'bg-blue-600/10 border-blue-500 text-white'
-                            : 'bg-slate-950 border-slate-800 text-slate-400'
-                        }`}
-                      >
-                        <span className="text-lg">{upi.emoji}</span>
-                        <span>{upi.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleSimulatePaymentSuccess()}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl uppercase tracking-widest shadow-lifted"
+                
+                <button 
+                  onClick={() => setShowRazorpaySandbox(false)}
+                  className="text-xs text-slate-400 hover:text-white font-bold"
                 >
-                  Pay with Simulated {selectedUpi.toUpperCase()}
+                  Cancel
                 </button>
               </div>
-            )}
 
-            {paymentStep === 'processing' && (
-              <div className="text-center py-8 space-y-4">
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-sm font-semibold text-slate-300">Authorizing simulated secure payment token...</p>
-                <p className="text-[10px] text-slate-500">Contacting virtual bank network API</p>
-              </div>
-            )}
+              {paymentStep === 'method' && (
+                <div className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-black">Payable Amount</p>
+                    <p className="text-3xl font-black text-white font-mono">₹{finalCheckoutAmount}</p>
+                  </div>
 
-            {paymentStep === 'success' && (
-              <div className="text-center py-8 space-y-3">
-                <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
-                <p className="text-base font-black text-white">Payment Authorized!</p>
-                <p className="text-xs text-slate-400">Order successfully logged in database.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+                  <div className="space-y-2">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Select UPI Provider</p>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'gpay', name: 'GPay', emoji: '🟢' },
+                        { id: 'phonepe', name: 'PhonePe', emoji: '🟣' },
+                        { id: 'paytm', name: 'Paytm', emoji: '🔵' }
+                      ].map((upi) => (
+                        <button
+                          key={upi.id}
+                          onClick={() => setSelectedUpi(upi.id)}
+                          className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-xs font-bold ${
+                            selectedUpi === upi.id
+                              ? 'bg-blue-600/10 border-blue-500 text-white'
+                              : 'bg-slate-950/80 border-slate-800 text-slate-400'
+                          }`}
+                        >
+                          <span className="text-lg">{upi.emoji}</span>
+                          <span className="text-[10px] font-extrabold">{upi.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleSimulatePaymentSuccess()}
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lifted"
+                  >
+                    Pay with Sandbox {selectedUpi.toUpperCase()}
+                  </button>
+                </div>
+              )}
+
+              {paymentStep === 'processing' && (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-extrabold text-slate-300 uppercase tracking-wider">Authorizing Transaction...</p>
+                  <p className="text-[10px] text-slate-500 leading-normal">Simulating connection with virtual bank network API</p>
+                </div>
+              )}
+
+              {paymentStep === 'success' && (
+                <div className="text-center py-8 space-y-3">
+                  <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
+                  <p className="text-base font-black text-white">Payment Authorized!</p>
+                  <p className="text-[10px] text-slate-400">Order successfully logged in database.</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
+

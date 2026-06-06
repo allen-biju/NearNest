@@ -46,40 +46,71 @@
 @layer components {
   /* Glass morphism surface */
   .glassmorphism {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(232, 221, 211, 0.5);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(232, 221, 211, 0.4);
+    box-shadow: 0 4px 30px rgba(26, 18, 8, 0.03);
+  }
+
+  /* Glass morphism dark (for secure modals) */
+  .glassmorphism-dark {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 
   /* Organic card with hover lift */
   .organic-card {
-    border-radius: 20px;
+    border-radius: 24px;
     background: #ffffff;
     border: 1px solid #E8DDD3;
-    box-shadow: 0 4px 20px rgba(26, 18, 8, 0.04);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 6px 20px rgba(26, 18, 8, 0.03);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .organic-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(26, 18, 8, 0.10);
-    border-color: #F4A261;
+    transform: translateY(-5px);
+    box-shadow: 0 16px 36px rgba(26, 18, 8, 0.08);
+    border-color: #E85D26;
   }
 
-  /* Full-width pill button */
+  /* Premium buttons */
   .btn-primary {
-    @apply w-full py-3 bg-primary hover:bg-primary-dark text-white text-xs font-black rounded-xl shadow-lifted uppercase tracking-widest transition-colors flex items-center justify-center gap-2;
+    @apply w-full py-3 bg-primary hover:bg-primary-dark text-white text-xs font-extrabold rounded-2xl shadow-premium uppercase tracking-widest transition-all duration-300 transform active:scale-[0.98] flex items-center justify-center gap-2;
   }
   .btn-secondary {
-    @apply w-full py-3 bg-secondary hover:bg-secondary-dark text-white text-xs font-black rounded-xl uppercase tracking-widest transition-colors;
+    @apply w-full py-3 bg-secondary hover:bg-secondary-dark text-white text-xs font-extrabold rounded-2xl uppercase tracking-widest transition-all duration-300 transform active:scale-[0.98] flex items-center justify-center gap-2;
   }
   .btn-ghost {
-    @apply px-4 py-2 bg-transparent border border-warmborder text-textSecondary hover:bg-surface text-xs font-bold rounded-xl transition-colors;
+    @apply px-4 py-2.5 bg-transparent border border-warmborder text-textSecondary hover:bg-surface hover:text-textPrimary text-xs font-bold rounded-2xl transition-all duration-200;
   }
 
   /* Input field base */
   .input-base {
-    @apply w-full px-3 py-2.5 bg-background border border-warmborder rounded-xl text-xs text-textPrimary placeholder:text-textSecondary/40 focus:outline-none focus:border-primary transition-colors;
+    @apply w-full px-4 py-3 bg-background border border-warmborder rounded-2xl text-xs text-textPrimary placeholder:text-textSecondary/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all duration-200;
+  }
+
+  /* Shimmer Loading Effect */
+  .shimmer {
+    background: linear-gradient(90deg, #f3f3f3 25%, #ececec 50%, #f3f3f3 75%);
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.5s infinite;
+  }
+
+  /* Text Gradient Brand */
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }
 
@@ -205,3 +236,9 @@
   background: transparent !important;
   border: none !important;
 }
+
+/* ────────────────────────────────────────────────
+   SCROLLBAR UTILITIES
+   ──────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
